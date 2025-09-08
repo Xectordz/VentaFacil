@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import styles from './Reports.module.css'
-import { BarChart3, Calendar, DollarSign, TrendingUp, Download } from 'lucide-react'
+import { BarChart3, Calendar, DollarSign, TrendingUp, Download, Store, Globe, Users } from 'lucide-react'
 import { useSupabase } from '../../context/SupabaseContext'
 import toast from 'react-hot-toast'
 
 const Reports = () => {
   const { supabase } = useSupabase()
   const [salesData, setSalesData] = useState([])
+  const [onlineOrdersData, setOnlineOrdersData] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedPeriod, setSelectedPeriod] = useState('today')
+  const [salesType, setSalesType] = useState('all') // 'all', 'admin', 'online'
   const [dateRange, setDateRange] = useState({
     start: '',
     end: ''
@@ -17,6 +19,7 @@ const Reports = () => {
   // Cargar ventas desde Supabase
   useEffect(() => {
     fetchSalesData()
+    fetchOnlineOrdersData()
   }, [selectedPeriod, dateRange])
 
   const fetchSalesData = async () => {
@@ -50,7 +53,9 @@ const Reports = () => {
           minute: '2-digit' 
         }),
         items: sale.items,
-        total: parseFloat(sale.total)
+        total: parseFloat(sale.total),
+        type: 'admin',
+        source: 'Venta Presencial'
       }))
 
       setSalesData(formattedData)
@@ -58,7 +63,66 @@ const Reports = () => {
       console.error('Error cargando ventas:', error)
       toast.error('❌ Error cargando los datos de ventas')
     }
-    setLoading(false)
+  }
+
+  const fetchOnlineOrdersData = async () => {
+    try {
+      let query = supabase
+        .from('online_orders')
+        .select(`
+          id,
+          customer_name,
+          customer_email,
+          total,
+          status,
+          created_at,
+          order_items (
+            quantity,
+            price,
+            products (
+              name,
+              code
+            )
+          )
+        `)
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+
+      // Aplicar filtros de fecha según el período seleccionado
+      const { startDate, endDate } = getDateRange()
+      if (startDate) query = query.gte('created_at', startDate)
+      if (endDate) query = query.lte('created_at', endDate)
+
+      const { data, error } = await query
+
+      if (error) throw error
+
+      // Formatear los datos para que coincidan con la estructura esperada
+      const formattedData = data.map(order => ({
+        id: `online-${order.id}`,
+        date: order.created_at.split('T')[0],
+        time: new Date(order.created_at).toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        }),
+        items: order.order_items.map(item => ({
+          name: item.products?.name || 'Producto eliminado',
+          quantity: item.quantity,
+          price: item.price
+        })),
+        total: parseFloat(order.total),
+        type: 'online',
+        source: 'Venta Online',
+        customer: order.customer_name
+      }))
+
+      setOnlineOrdersData(formattedData)
+    } catch (error) {
+      console.error('Error cargando pedidos online:', error)
+      toast.error('❌ Error cargando los datos de pedidos online')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const getDateRange = () => {
@@ -98,7 +162,18 @@ const Reports = () => {
   }
 
   const getFilteredSales = () => {
-    return salesData // Los datos ya vienen filtrados desde la base de datos
+    const allSales = [...salesData, ...onlineOrdersData].sort((a, b) => 
+      new Date(b.date + 'T' + b.time) - new Date(a.date + 'T' + a.time)
+    )
+    
+    switch (salesType) {
+      case 'admin':
+        return allSales.filter(sale => sale.type === 'admin')
+      case 'online':
+        return allSales.filter(sale => sale.type === 'online')
+      default:
+        return allSales
+    }
   }
 
   const filteredSales = getFilteredSales()
@@ -185,24 +260,56 @@ const Reports = () => {
 
       {/* Filtros de período */}
       <div className={styles.filtersSection}>
-        <h3>Período de Análisis</h3>
-        <div className={styles.periodButtons}>
-          {[
-            { key: 'today', label: 'Hoy' },
-            { key: 'yesterday', label: 'Ayer' },
-            { key: 'week', label: 'Última Semana' },
-            { key: 'month', label: 'Último Mes' },
-            { key: 'custom', label: 'Personalizado' }
-          ].map(period => (
+        <div className={styles.filterGroup}>
+          <h3>Período de Análisis</h3>
+          <div className={styles.periodButtons}>
+            {[
+              { key: 'today', label: 'Hoy' },
+              { key: 'yesterday', label: 'Ayer' },
+              { key: 'week', label: 'Última Semana' },
+              { key: 'month', label: 'Último Mes' },
+              { key: 'custom', label: 'Personalizado' }
+            ].map(period => (
+              <button
+                key={period.key}
+                onClick={() => setSelectedPeriod(period.key)}
+                className={`${styles.periodBtn} ${selectedPeriod === period.key ? styles.active : ''}`}
+                disabled={loading}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <h3>Tipo de Venta</h3>
+          <div className={styles.salesTypeButtons}>
             <button
-              key={period.key}
-              onClick={() => setSelectedPeriod(period.key)}
-              className={`${styles.periodBtn} ${selectedPeriod === period.key ? styles.active : ''}`}
+              onClick={() => setSalesType('all')}
+              className={`${styles.typeBtn} ${salesType === 'all' ? styles.active : ''}`}
               disabled={loading}
             >
-              {period.label}
+              <Users size={16} />
+              Todas las Ventas
             </button>
-          ))}
+            <button
+              onClick={() => setSalesType('admin')}
+              className={`${styles.typeBtn} ${salesType === 'admin' ? styles.active : ''}`}
+              disabled={loading}
+            >
+              <Store size={16} />
+              Ventas Presenciales
+            </button>
+            <button
+              onClick={() => setSalesType('online')}
+              className={`${styles.typeBtn} ${salesType === 'online' ? styles.active : ''}`}
+              disabled={loading}
+            >
+              <Globe size={16} />
+              Ventas Online
+            </button>
+          </div>
         </div>
 
         {selectedPeriod === 'custom' && (
@@ -303,7 +410,16 @@ const Reports = () => {
             filteredSales.map(sale => (
               <div key={sale.id} className={styles.saleItem}>
                 <div className={styles.saleHeader}>
-                  <span className={styles.saleDate}>{sale.date} - {sale.time}</span>
+                  <div className={styles.saleInfo}>
+                    <span className={styles.saleDate}>{sale.date} - {sale.time}</span>
+                    <span className={`${styles.saleType} ${styles[sale.type]}`}>
+                      {sale.type === 'admin' ? <Store size={14} /> : <Globe size={14} />}
+                      {sale.source}
+                    </span>
+                    {sale.customer && (
+                      <span className={styles.customerName}>Cliente: {sale.customer}</span>
+                    )}
+                  </div>
                   <span className={styles.saleTotal}>${sale.total.toFixed(2)}</span>
                 </div>
                 <div className={styles.saleItems}>

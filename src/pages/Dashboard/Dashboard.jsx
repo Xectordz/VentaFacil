@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
-import { ShoppingCart, Package, TrendingUp, DollarSign } from 'lucide-react'
+import { ShoppingCart, Package, TrendingUp, DollarSign, Globe, QrCode, Settings } from 'lucide-react'
 import { useSales } from '../../hooks/useSales'
 import { useProducts } from '../../hooks/useProducts'
+import { useOnlineOrders } from '../../hooks/useOnlineOrders'
 
 const Dashboard = () => {
+  const navigate = useNavigate()
   const { getSalesStats } = useSales()
   const { products } = useProducts()
+  const { pendingCount } = useOnlineOrders()
   const [stats, setStats] = useState({
     totalSales: 0,
     totalTransactions: 0,
@@ -61,6 +65,31 @@ const Dashboard = () => {
     }
   ]
 
+  // Funciones para navegación
+  const handleNewSale = () => {
+    navigate('/admin/sales')
+  }
+
+  const handleAddProduct = () => {
+    navigate('/admin/inventory')
+  }
+
+  const handleViewReports = () => {
+    navigate('/admin/reports')
+  }
+
+  const handleOnlineOrders = () => {
+    navigate('/admin/online-orders')
+  }
+
+  const handleQRGenerator = () => {
+    navigate('/admin/qr-generator')
+  }
+
+  const handleSettings = () => {
+    navigate('/admin/settings')
+  }
+
   return (
     <div className={styles.dashboard}>
       <h2 className={styles.title}>Dashboard</h2>
@@ -90,17 +119,51 @@ const Dashboard = () => {
       <div className={styles.quickActions}>
         <h3>Acciones Rápidas</h3>
         <div className={styles.actionGrid}>
-          <button className={styles.actionBtn}>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleNewSale}
+          >
             <ShoppingCart size={20} />
             Nueva Venta
           </button>
-          <button className={styles.actionBtn}>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleAddProduct}
+          >
             <Package size={20} />
             Agregar Producto
           </button>
-          <button className={styles.actionBtn}>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleOnlineOrders}
+            style={{ position: 'relative' }}
+          >
+            <Globe size={20} />
+            Pedidos Online
+            {pendingCount > 0 && (
+              <span className={styles.badge}>{pendingCount}</span>
+            )}
+          </button>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleViewReports}
+          >
             <TrendingUp size={20} />
             Ver Reportes
+          </button>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleQRGenerator}
+          >
+            <QrCode size={20} />
+            Generar QR
+          </button>
+          <button 
+            className={styles.actionBtn}
+            onClick={handleSettings}
+          >
+            <Settings size={20} />
+            Configuración
           </button>
         </div>
       </div>

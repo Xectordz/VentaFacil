@@ -223,7 +223,7 @@
 
 .listHeader {
   display: grid;
-  grid-template-columns: 120px 1fr 100px 80px 100px;
+  grid-template-columns: 60px 120px 1fr 100px 80px 100px;
   gap: 1rem;
   padding: 1rem 1.5rem;
   background: #f9fafb;
@@ -235,7 +235,7 @@
 
 .productItem {
   display: grid;
-  grid-template-columns: 120px 1fr 100px 80px 100px;
+  grid-template-columns: 60px 120px 1fr 100px 80px 100px;
   gap: 1rem;
   padding: 1rem 1.5rem;
   border-bottom: 1px solid #f3f4f6;
@@ -419,6 +419,24 @@
 .deleteBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Estilos para la sección de imagen */
+.imageHint {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background-color: #f0f9ff;
+  border-radius: 0.375rem;
+  border-left: 4px solid #3b82f6;
+  font-style: italic;
+}
+
+.productImageColumn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Estilos para el escáner */

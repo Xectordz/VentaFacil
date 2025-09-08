@@ -4,6 +4,8 @@ import { Plus, Search, Edit, Trash2, Package, Camera, X } from 'lucide-react'
 import { useProducts } from '../../hooks/useProducts'
 import { useConfirm } from '../../hooks/useConfirm.jsx'
 import { Html5QrcodeScanner } from 'html5-qrcode'
+import ImageUploader from '../../components/ImageUploader/ImageUploader'
+import ProductImageCell from '../../components/ProductImageCell/ProductImageCell'
 import toast from 'react-hot-toast'
 
 const Inventory = () => {
@@ -25,6 +27,7 @@ const Inventory = () => {
   const [showFormScanner, setShowFormScanner] = useState(false)
   const scannerRef = useRef(null)
   const formScannerRef = useRef(null)
+  const imageUploaderRef = useRef(null) // Ref para el ImageUploader
   const [newProduct, setNewProduct] = useState({
     code: '',
     name: '',
@@ -64,6 +67,16 @@ const Inventory = () => {
     const result = await addProduct(productData)
     
     if (result.success) {
+      // Si hay una imagen pendiente, subirla al producto creado
+      if (imageUploaderRef.current && result.data) {
+        try {
+          await imageUploaderRef.current.uploadPendingImage(result.data.id)
+        } catch (error) {
+          console.error('Error uploading image:', error)
+          toast.error('Producto creado pero error al subir imagen')
+        }
+      }
+      
       setNewProduct({ code: '', name: '', price: '', stock: '', description: '' })
       setShowAddForm(false)
       toast.success('✅ Producto agregado exitosamente')
@@ -99,6 +112,16 @@ const Inventory = () => {
     const result = await updateProduct(editingProduct, productData)
     
     if (result.success) {
+      // Si hay una imagen pendiente, subirla al producto actualizado
+      if (imageUploaderRef.current) {
+        try {
+          await imageUploaderRef.current.uploadPendingImage(editingProduct)
+        } catch (error) {
+          console.error('Error uploading image:', error)
+          toast.error('Producto actualizado pero error al subir imagen')
+        }
+      }
+      
       setEditingProduct(null)
       setNewProduct({ code: '', name: '', price: '', stock: '', description: '' })
       toast.success('✅ Producto actualizado exitosamente')
@@ -377,6 +400,27 @@ const Inventory = () => {
                 />
               </div>
             </div>
+            
+            {/* Sección de imagen del producto */}
+            <div className={styles.formGroup}>
+              <label>Imagen del Producto</label>
+              <ImageUploader 
+                ref={imageUploaderRef}
+                product={editingProduct ? products.find(p => p.id === editingProduct) : { id: 'temp', name: newProduct.name }}
+                onImageUpdate={(imageUrl) => {
+                  // En el caso de edición, la imagen se actualiza automáticamente
+                  // En el caso de nuevo producto, se manejará después de crear el producto
+                  if (editingProduct) {
+                    // Refrescar datos del producto
+                    toast.success('Imagen actualizada correctamente');
+                  }
+                }}
+              />
+              <p className={styles.imageHint}>
+                📎 La imagen se optimizará automáticamente a formato WebP para mejorar la velocidad de carga
+              </p>
+            </div>
+            
             <div className={styles.formGroup}>
               <label>Descripción</label>
               <textarea
@@ -413,6 +457,7 @@ const Inventory = () => {
         ) : (
           <>
             <div className={styles.listHeader}>
+              <span>Imagen</span>
               <span>Código</span>
               <span>Nombre</span>
               <span>Precio</span>
@@ -428,6 +473,9 @@ const Inventory = () => {
             ) : (
               filteredProducts.map((product) => (
                 <div key={product.id} className={styles.productItem}>
+                  <div className={styles.productImageColumn}>
+                    <ProductImageCell product={product} />
+                  </div>
                   <span className={styles.code}>{product.code}</span>
                   <div className={styles.productInfo}>
                     <h4>{product.name}</h4>

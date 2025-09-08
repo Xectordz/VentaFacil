@@ -1,5 +1,5 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, Outlet } from 'react-router-dom'
 import styles from './Layout.module.css'
 import { 
   Home, 
@@ -7,20 +7,26 @@ import {
   Package, 
   BarChart3, 
   QrCode,
+  Globe,
+  Settings,
   Menu,
   X
 } from 'lucide-react'
+import { useOnlineOrders } from '../../hooks/useOnlineOrders'
 
-const Layout = ({ children }) => {
+const Layout = () => {
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = React.useState(false)
+  const { pendingCount } = useOnlineOrders()
 
   const navigation = [
-    { name: 'Dashboard', href: '/', icon: Home },
-    { name: 'Ventas', href: '/sales', icon: ShoppingCart },
-    { name: 'Inventario', href: '/inventory', icon: Package },
-    { name: 'Reportes', href: '/reports', icon: BarChart3 },
-    { name: 'Generar QR', href: '/qr-generator', icon: QrCode },
+    { name: 'Dashboard', href: '/admin', icon: Home },
+    { name: 'Ventas', href: '/admin/sales', icon: ShoppingCart },
+    { name: 'Inventario', href: '/admin/inventory', icon: Package },
+    { name: 'Pedidos Online', href: '/admin/online-orders', icon: Globe, badge: pendingCount },
+    { name: 'Reportes', href: '/admin/reports', icon: BarChart3 },
+    { name: 'Generar QR', href: '/admin/qr-generator', icon: QrCode },
+    { name: 'Configuración', href: '/admin/settings', icon: Settings },
   ]
 
   const isActive = (path) => location.pathname === path
@@ -51,6 +57,9 @@ const Layout = ({ children }) => {
                 >
                   <Icon size={20} />
                   <span>{item.name}</span>
+                  {item.badge && item.badge > 0 && (
+                    <span className={styles.badge}>{item.badge}</span>
+                  )}
                 </Link>
               )
             })}
@@ -78,6 +87,9 @@ const Layout = ({ children }) => {
               >
                 <Icon size={20} />
                 <span>{item.name}</span>
+                {item.badge && item.badge > 0 && (
+                  <span className={styles.badge}>{item.badge}</span>
+                )}
               </Link>
             )
           })}
@@ -93,10 +105,14 @@ const Layout = ({ children }) => {
           >
             <Menu size={24} />
           </button>
-          <h1 className={styles.title}>Sistema de Punto de Venta</h1>
+          <h1 className={styles.title}>VentaFacil - Administrador</h1>
+          <Link to="/tienda" className={styles.storeLink}>
+            <Globe size={20} />
+            Ver Tienda
+          </Link>
         </header>
         <main className={styles.content}>
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
